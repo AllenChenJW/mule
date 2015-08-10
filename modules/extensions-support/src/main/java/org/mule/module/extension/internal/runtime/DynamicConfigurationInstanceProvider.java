@@ -11,6 +11,10 @@ import org.mule.api.MuleEvent;
 import org.mule.api.MuleRuntimeException;
 import org.mule.extension.runtime.ConfigurationInstanceProvider;
 import org.mule.extension.runtime.OperationContext;
+import org.mule.extension.runtime.event.OperationFailedEvent;
+import org.mule.extension.runtime.event.OperationFailedHandler;
+import org.mule.extension.runtime.event.OperationSuccessfulEvent;
+import org.mule.extension.runtime.event.OperationSuccessfulHandler;
 import org.mule.module.extension.internal.runtime.resolver.ResolverSet;
 import org.mule.module.extension.internal.runtime.resolver.ResolverSetResult;
 
@@ -35,8 +39,16 @@ public final class DynamicConfigurationInstanceProvider<T> implements Configurat
 
     private final ConfigurationObjectBuilder configurationObjectBuilder;
     private final ResolverSet resolverSet;
-
-    private LoadingCache<ResolverSetResult, T> cache;
+    private final LoadingCache<ResolverSetResult, DynamicConfigurationInstanceHolder> cache =
+            CacheBuilder.newBuilder().build(new CacheLoader<ResolverSetResult, DynamicConfigurationInstanceHolder>()
+            {
+                @Override
+                public DynamicConfigurationInstanceHolder load(ResolverSetResult resolverSetResult) throws Exception
+                {
+                    Object configurationInstance = configurationObjectBuilder.build(resolverSetResult);
+                    return new DynamicConfigurationInstanceHolder(configurationInstance);
+                }
+            });
 
     /**
      * Creates a new instance
@@ -49,19 +61,6 @@ public final class DynamicConfigurationInstanceProvider<T> implements Configurat
     {
         this.configurationObjectBuilder = configurationObjectBuilder;
         this.resolverSet = resolverSet;
-        buildCache();
-    }
-
-    private void buildCache()
-    {
-        cache = CacheBuilder.newBuilder().build(new CacheLoader<ResolverSetResult, T>()
-        {
-            @Override
-            public T load(ResolverSetResult resolverSetResult) throws Exception
-            {
-                return (T) configurationObjectBuilder.build(resolverSetResult);
-            }
-        });
     }
 
     /**
@@ -78,11 +77,43 @@ public final class DynamicConfigurationInstanceProvider<T> implements Configurat
         try
         {
             ResolverSetResult result = resolverSet.resolve(asOperationContextAdapter(operationContext).getEvent());
-            return cache.getUnchecked(result);
+            DynamicConfigurationInstanceHolder configurationInstanceHolder = cache.getUnchecked(result);
+            OperationCompletedHandler handler = new OperationCompletedHandler(configurationInstanceHolder);
+
+            operationContext.getOperationExecutor().onOperationSuccessful(handler);
+            operationContext.getOperationExecutor().onOperationFailed(handler);
+
+            configurationInstanceHolder.addInflightUsage();
+            return (T) configurationInstanceHolder.getConfigurationInstance();
         }
         catch (Exception e)
         {
             throw new MuleRuntimeException(e);
+        }
+    }
+
+    private class OperationCompletedHandler implements OperationSuccessfulHandler, OperationFailedHandler {
+        private final DynamicConfigurationInstanceHolder configurationInstanceHolder;
+
+        private OperationCompletedHandler(DynamicConfigurationInstanceHolder configurationInstanceHolder)
+        {
+            this.configurationInstanceHolder = configurationInstanceHolder;
+        }
+
+        @Override
+        public void on(OperationFailedEvent event)
+        {
+            discount();
+        }
+
+        @Override
+        public void on(OperationSuccessfulEvent event)
+        {
+            discount();
+        }
+
+        private void discount() {
+            configurationInstanceHolder.discountInflightUsage();
         }
     }
 }

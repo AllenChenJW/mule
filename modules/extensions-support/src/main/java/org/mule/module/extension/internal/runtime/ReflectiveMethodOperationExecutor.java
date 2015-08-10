@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
  *
  * @since 3.7.0
  */
-public final class ReflectiveMethodOperationExecutor implements OperationExecutor, MuleContextAware, Lifecycle
+public final class ReflectiveMethodOperationExecutor extends AbstractOperationExecutor implements MuleContextAware, Lifecycle
 {
 
     private static class NoArgumentsResolverDelegate implements ArgumentResolverDelegate
@@ -74,7 +74,7 @@ public final class ReflectiveMethodOperationExecutor implements OperationExecuto
      * {@inheritDoc}
      */
     @Override
-    public Object execute(OperationContext operationContext) throws Exception
+    protected Object doExecute(OperationContext operationContext) throws Exception
     {
         Object result = invokeMethod(operationMethod, executorDelegate, getParameterValues(operationContext));
         return returnDelegate.asReturnValue(result, operationContext);

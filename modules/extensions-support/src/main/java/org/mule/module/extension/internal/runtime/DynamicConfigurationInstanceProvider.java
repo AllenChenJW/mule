@@ -11,10 +11,6 @@ import org.mule.api.MuleEvent;
 import org.mule.api.MuleRuntimeException;
 import org.mule.extension.runtime.ConfigurationInstanceProvider;
 import org.mule.extension.runtime.OperationContext;
-import org.mule.extension.runtime.event.OperationFailedEvent;
-import org.mule.extension.runtime.event.OperationFailedHandler;
-import org.mule.extension.runtime.event.OperationSuccessfulEvent;
-import org.mule.extension.runtime.event.OperationSuccessfulHandler;
 import org.mule.module.extension.internal.runtime.resolver.ResolverSet;
 import org.mule.module.extension.internal.runtime.resolver.ResolverSetResult;
 
@@ -56,8 +52,7 @@ public final class DynamicConfigurationInstanceProvider<T> implements Configurat
      * @param configurationObjectBuilder the {@link ConfigurationObjectBuilder} that will build the configuration instances
      * @param resolverSet                the {@link ResolverSet} that's going to be evaluated
      */
-    public DynamicConfigurationInstanceProvider(ConfigurationObjectBuilder configurationObjectBuilder,
-                                                ResolverSet resolverSet)
+    public DynamicConfigurationInstanceProvider(ConfigurationObjectBuilder configurationObjectBuilder, ResolverSet resolverSet)
     {
         this.configurationObjectBuilder = configurationObjectBuilder;
         this.resolverSet = resolverSet;
@@ -78,10 +73,9 @@ public final class DynamicConfigurationInstanceProvider<T> implements Configurat
         {
             ResolverSetResult result = resolverSet.resolve(asOperationContextAdapter(operationContext).getEvent());
             DynamicConfigurationInstanceHolder configurationInstanceHolder = cache.getUnchecked(result);
-            OperationCompletedHandler handler = new OperationCompletedHandler(configurationInstanceHolder);
 
-            operationContext.getOperationExecutor().onOperationSuccessful(handler);
-            operationContext.getOperationExecutor().onOperationFailed(handler);
+            operationContext.onOperationSuccessful(event -> discountInflightUsage(configurationInstanceHolder));
+            operationContext.onOperationFailed(event -> discountInflightUsage(configurationInstanceHolder));
 
             configurationInstanceHolder.addInflightUsage();
             return (T) configurationInstanceHolder.getConfigurationInstance();
@@ -92,28 +86,8 @@ public final class DynamicConfigurationInstanceProvider<T> implements Configurat
         }
     }
 
-    private class OperationCompletedHandler implements OperationSuccessfulHandler, OperationFailedHandler {
-        private final DynamicConfigurationInstanceHolder configurationInstanceHolder;
-
-        private OperationCompletedHandler(DynamicConfigurationInstanceHolder configurationInstanceHolder)
-        {
-            this.configurationInstanceHolder = configurationInstanceHolder;
-        }
-
-        @Override
-        public void on(OperationFailedEvent event)
-        {
-            discount();
-        }
-
-        @Override
-        public void on(OperationSuccessfulEvent event)
-        {
-            discount();
-        }
-
-        private void discount() {
-            configurationInstanceHolder.discountInflightUsage();
-        }
+    private void discountInflightUsage(DynamicConfigurationInstanceHolder configurationInstanceHolder)
+    {
+        configurationInstanceHolder.discountInflightUsage();
     }
 }

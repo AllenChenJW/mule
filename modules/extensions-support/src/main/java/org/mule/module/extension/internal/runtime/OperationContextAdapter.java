@@ -27,4 +27,8 @@ public interface OperationContextAdapter extends OperationContext
      */
     MuleEvent getEvent();
 
+    void notifySuccessfulOperation(Object result);
+
+    void notifyFailedOperation(Exception exception);
+
 }

@@ -9,7 +9,10 @@ package org.mule.module.extension.internal.runtime;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 import static org.mockito.Answers.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mule.module.extension.HealthStatus.DEAD;
@@ -18,7 +21,6 @@ import org.mule.api.MuleEvent;
 import org.mule.extension.introspection.Extension;
 import org.mule.extension.introspection.Operation;
 import org.mule.extension.introspection.Parameter;
-import org.mule.extension.runtime.OperationContext;
 import org.mule.module.extension.HeisenbergExtension;
 import org.mule.module.extension.HeisenbergOperations;
 import org.mule.module.extension.internal.manager.ExtensionManagerAdapter;
@@ -37,12 +39,14 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 
 @SmallTest
 @RunWith(MockitoJUnitRunner.class)
 public class ReflectiveMethodOperationExecutorTestCase extends AbstractMuleTestCase
 {
+
     private static final String CONFIG_NAME = "config";
 
     @Mock(answer = RETURNS_DEEP_STUBS)
@@ -61,7 +65,7 @@ public class ReflectiveMethodOperationExecutorTestCase extends AbstractMuleTestC
     private ExtensionManagerAdapter extensionManager;
 
     private ReflectiveMethodOperationExecutor executor;
-    private OperationContext operationContext;
+    private OperationContextAdapter operationContext;
     private HeisenbergExtension config;
     private HeisenbergOperations operations;
 
@@ -70,7 +74,7 @@ public class ReflectiveMethodOperationExecutorTestCase extends AbstractMuleTestC
     public void init()
     {
         initHeisenberg();
-        operationContext = new DefaultOperationContext(extension, operation, CONFIG_NAME, parameters, muleEvent, extensionManager);
+        operationContext = spy(new DefaultOperationContext(extension, operation, CONFIG_NAME, parameters, muleEvent, extensionManager));
         when(extensionManager.getConfigurationInstance(extension, CONFIG_NAME, operationContext)).thenReturn(config);
     }
 
@@ -80,6 +84,32 @@ public class ReflectiveMethodOperationExecutorTestCase extends AbstractMuleTestC
         Method method = ClassUtils.getMethod(HeisenbergOperations.class, "sayMyName", new Class<?>[] {HeisenbergExtension.class});
         executor = new ReflectiveMethodOperationExecutor(method, operations, ValueReturnDelegate.INSTANCE);
         assertResult(executor.execute(operationContext), HEISENBERG);
+    }
+
+    @Test
+    public void successfulOperationIsNotified() throws Exception
+    {
+        operationWithReturnValueAndWithoutParameters();
+        verify(operationContext).notifySuccessfulOperation(HEISENBERG);
+    }
+
+    @Test
+    public void failingOperationIsNotified() throws Exception
+    {
+        final RuntimeException exception = new RuntimeException();
+        operations = mock(HeisenbergOperations.class);
+        when(operations.sayMyName(Mockito.any(HeisenbergExtension.class))).thenThrow(exception);
+
+        try
+        {
+            operationWithReturnValueAndWithoutParameters();
+            fail("was expecting an exception");
+        }
+        catch (Exception e)
+        {
+            verify(operationContext).notifyFailedOperation(exception);
+            assertThat(e, is(sameInstance(exception)));
+        }
     }
 
     @Test

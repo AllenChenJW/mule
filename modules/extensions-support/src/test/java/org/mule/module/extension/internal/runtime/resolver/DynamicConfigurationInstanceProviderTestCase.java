@@ -31,9 +31,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
 import org.mockito.runners.MockitoJUnitRunner;
-import org.mockito.stubbing.Answer;
 
 @SmallTest
 @RunWith(MockitoJUnitRunner.class)
@@ -64,14 +62,7 @@ public class DynamicConfigurationInstanceProviderTestCase extends AbstractConfig
     {
         ExtensionsTestUtils.stubRegistryKeys(muleContext, CONFIG_NAME);
         when(configuration.getInstantiator().getObjectType()).thenReturn(MODULE_CLASS);
-        when(configuration.getInstantiator().newInstance()).thenAnswer(new Answer<Object>()
-        {
-            @Override
-            public Object answer(InvocationOnMock invocation) throws Throwable
-            {
-                return MODULE_CLASS.newInstance();
-            }
-        });
+        when(configuration.getInstantiator().newInstance()).thenAnswer(invocation -> MODULE_CLASS.newInstance());
         when(configuration.getCapabilities(any(Class.class))).thenReturn(null);
 
         when(resolverSet.resolve(event)).thenReturn(resolverSetResult);
@@ -90,7 +81,7 @@ public class DynamicConfigurationInstanceProviderTestCase extends AbstractConfig
         HeisenbergExtension config = (HeisenbergExtension) instanceProvider.get(operationContext);
         for (int i = 1; i < count; i++)
         {
-            assertThat((HeisenbergExtension) instanceProvider.get(operationContext), is(sameInstance(config)));
+            assertThat(instanceProvider.get(operationContext), is(sameInstance(config)));
         }
 
         verify(resolverSet, times(count)).resolve(event);

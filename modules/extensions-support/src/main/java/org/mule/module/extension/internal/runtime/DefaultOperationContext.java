@@ -10,12 +10,18 @@ import org.mule.api.MuleEvent;
 import org.mule.extension.introspection.Extension;
 import org.mule.extension.introspection.Operation;
 import org.mule.extension.introspection.Parameter;
+import org.mule.extension.runtime.event.OperationFailedEvent;
+import org.mule.extension.runtime.event.OperationSuccessfulEvent;
 import org.mule.module.extension.internal.manager.ExtensionManagerAdapter;
 import org.mule.module.extension.internal.runtime.resolver.ResolverSetResult;
 import org.mule.util.StringUtils;
 
+import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
+
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * Default implementation of {@link OperationContextAdapter} which
@@ -24,7 +30,7 @@ import java.util.Map;
  *
  * @since 3.7.0
  */
-public class DefaultOperationContext implements OperationContextAdapter
+public final class DefaultOperationContext implements OperationContextAdapter
 {
 
     private final String configurationInstanceProviderName;
@@ -33,6 +39,7 @@ public class DefaultOperationContext implements OperationContextAdapter
     private final Map<String, Object> parameters;
     private final MuleEvent event;
     private final ExtensionManagerAdapter extensionManager;
+    private final EventBus eventBus = new EventBus();
 
     private Object configurationInstance;
 
@@ -76,6 +83,44 @@ public class DefaultOperationContext implements OperationContextAdapter
         }
 
         return (C) configurationInstance;
+    }
+
+    @Override
+    public void notifySuccessfulOperation(Object result)
+    {
+        eventBus.post(new OperationSuccessfulEvent(result));
+    }
+
+    @Override
+    public void notifyFailedOperation(Exception exception)
+    {
+        eventBus.post(new OperationFailedEvent(exception));
+    }
+
+    @Override
+    public void onOperationSuccessful(Consumer<OperationSuccessfulEvent> handler)
+    {
+        eventBus.register(new Object()
+        {
+            @Subscribe
+            public void handle(OperationSuccessfulEvent event)
+            {
+                handler.accept(event);
+            }
+        });
+    }
+
+    @Override
+    public void onOperationFailed(Consumer<OperationFailedEvent> handler)
+    {
+        eventBus.register(new Object()
+        {
+            @Subscribe
+            public void handle(OperationFailedEvent event)
+            {
+                handler.accept(event);
+            }
+        });
     }
 
     @Override

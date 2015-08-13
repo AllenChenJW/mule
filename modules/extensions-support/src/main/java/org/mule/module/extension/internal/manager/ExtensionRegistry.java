@@ -7,7 +7,6 @@
 package org.mule.module.extension.internal.manager;
 
 import org.mule.extension.introspection.Extension;
-import org.mule.extension.runtime.ExpirableContainer;
 import org.mule.util.CollectionUtils;
 
 import com.google.common.cache.CacheBuilder;
@@ -27,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * @since 3.7.0
  */
-final class ExtensionRegistry implements ExpirableContainer<Object>
+final class ExtensionRegistry
 {
 
     private final LoadingCache<Extension, ExtensionStateTracker> extensionStates = CacheBuilder.newBuilder().build(new CacheLoader<Extension, ExtensionStateTracker>()
@@ -115,11 +114,10 @@ final class ExtensionRegistry implements ExpirableContainer<Object>
         return cachedCapables;
     }
 
-    @Override
-    public Map<String, Object> getExpired()
+    Map<String, Object> getExpiredConfigInstances()
     {
         ImmutableMap.Builder<String, Object> expired = ImmutableMap.builder();
-        extensionStates.asMap().values().stream().map(tracker -> tracker.getExpired()).forEach(expired::putAll);
+        extensionStates.asMap().values().stream().map(tracker -> tracker.getExpiredConfigInstances()).forEach(expired::putAll);
 
         return expired.build();
     }

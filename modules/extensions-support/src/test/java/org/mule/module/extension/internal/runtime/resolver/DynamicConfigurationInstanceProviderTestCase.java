@@ -23,7 +23,6 @@ import org.mule.api.MuleEvent;
 import org.mule.api.MuleException;
 import org.mule.extension.ExtensionManager;
 import org.mule.extension.runtime.ExpirationPolicy;
-import org.mule.extension.runtime.event.OperationFailedEvent;
 import org.mule.extension.runtime.event.OperationSuccessfulEvent;
 import org.mule.module.extension.HeisenbergExtension;
 import org.mule.module.extension.internal.runtime.TestTimeSupplier;
@@ -86,16 +85,6 @@ public class DynamicConfigurationInstanceProviderTestCase extends AbstractConfig
 
         when(operationContext.getEvent()).thenReturn(event);
 
-        // execute any registered event handler
-        doAnswer(invocation -> {
-            ((Consumer<OperationSuccessfulEvent>) invocation.getArguments()[0]).accept(mock(OperationSuccessfulEvent.class));
-            return null;
-        }).when(operationContext).onOperationSuccessful(any(Consumer.class));
-        doAnswer(invocation -> {
-            ((Consumer<OperationFailedEvent>) invocation.getArguments()[0]).accept(mock(OperationFailedEvent.class));
-            return null;
-        }).when(operationContext).onOperationFailed(any(Consumer.class));
-
         configurationObjectBuilder = new ConfigurationObjectBuilder(configuration, resolverSet);
         expirationPolicy = new DefaultExpirationPolicy(5, TimeUnit.MINUTES, timeSupplier);
 
@@ -138,6 +127,11 @@ public class DynamicConfigurationInstanceProviderTestCase extends AbstractConfig
         when(configurationInstanceRegistrationCallback.registerConfigurationInstance(same(extension), same(CONFIG_NAME), any(Object.class)))
                 .thenReturn(key1)
                 .thenReturn(key2);
+
+        doAnswer(invocation -> {
+            ((Consumer<OperationSuccessfulEvent>) invocation.getArguments()[0]).accept(mock(OperationSuccessfulEvent.class));
+            return null;
+        }).when(operationContext).onOperationSuccessful(any(Consumer.class));
 
         HeisenbergExtension instance1 = (HeisenbergExtension) instanceProvider.get(operationContext);
         HeisenbergExtension instance2 = makeAlternateInstance();

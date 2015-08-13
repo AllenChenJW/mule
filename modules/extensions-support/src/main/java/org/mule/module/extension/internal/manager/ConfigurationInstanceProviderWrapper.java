@@ -8,11 +8,14 @@ package org.mule.module.extension.internal.manager;
 
 import static org.mule.util.MapUtils.idempotentPut;
 import org.mule.extension.runtime.ConfigurationInstanceProvider;
+import org.mule.extension.runtime.ExpirableContainer;
+
+import com.google.common.collect.ImmutableMap;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-final class ConfigurationInstanceProviderWrapper
+final class ConfigurationInstanceProviderWrapper implements ExpirableContainer<Object>
 {
 
     private final ConfigurationInstanceProvider<?> configurationInstanceProvider;
@@ -31,5 +34,16 @@ final class ConfigurationInstanceProviderWrapper
     void addConfigurationInstance(String registrationName, Object configurationInstance)
     {
         idempotentPut(configurationInstances, registrationName, configurationInstance);
+    }
+
+    @Override
+    public Map<String, Object> getExpired()
+    {
+        if (configurationInstanceProvider instanceof ExpirableContainer)
+        {
+            return ImmutableMap.copyOf(((ExpirableContainer<Object>) configurationInstanceProvider).getExpired());
+        }
+
+        return ImmutableMap.of();
     }
 }

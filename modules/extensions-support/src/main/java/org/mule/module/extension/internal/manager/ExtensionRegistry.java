@@ -7,11 +7,13 @@
 package org.mule.module.extension.internal.manager;
 
 import org.mule.extension.introspection.Extension;
+import org.mule.extension.runtime.ExpirableContainer;
 import org.mule.util.CollectionUtils;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
 import java.util.Map;
@@ -25,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * @since 3.7.0
  */
-final class ExtensionRegistry
+final class ExtensionRegistry implements ExpirableContainer<Object>
 {
 
     private final LoadingCache<Extension, ExtensionStateTracker> extensionStates = CacheBuilder.newBuilder().build(new CacheLoader<Extension, ExtensionStateTracker>()
@@ -103,13 +105,8 @@ final class ExtensionRegistry
         if (CollectionUtils.isEmpty(cachedCapables))
         {
             ImmutableSet.Builder<Extension> capables = ImmutableSet.builder();
-            for (Extension extension : getExtensions())
-            {
-                if (extension.isCapableOf(capabilityType))
-                {
-                    capables.add(extension);
-                }
-            }
+
+            getExtensions().stream().filter(extension -> extension.isCapableOf(capabilityType)).forEach(capables::add);
 
             cachedCapables = capables.build();
             capabilityToExtension.put(capabilityType, cachedCapables);
@@ -117,4 +114,14 @@ final class ExtensionRegistry
 
         return cachedCapables;
     }
+
+    @Override
+    public Map<String, Object> getExpired()
+    {
+        ImmutableMap.Builder<String, Object> expired = ImmutableMap.builder();
+        extensionStates.asMap().values().stream().map(tracker -> tracker.getExpired()).forEach(expired::putAll);
+
+        return expired.build();
+    }
+
 }

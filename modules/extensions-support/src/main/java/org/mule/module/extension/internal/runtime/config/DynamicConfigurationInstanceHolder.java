@@ -6,9 +6,13 @@
  */
 package org.mule.module.extension.internal.runtime.config;
 
+import org.mule.extension.runtime.Expirable;
+import org.mule.extension.runtime.ExpirationPolicy;
+
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class DynamicConfigurationInstanceHolder
+public class DynamicConfigurationInstanceHolder implements Expirable
 {
 
     private final String registrationName;
@@ -21,6 +25,12 @@ public class DynamicConfigurationInstanceHolder
     {
         this.registrationName = registrationName;
         this.configurationInstance = configurationInstance;
+    }
+
+    @Override
+    public boolean isExpired(ExpirationPolicy expirationPolicy)
+    {
+        return isNotInUse() && expirationPolicy.isExpired(lastUsedMillis, TimeUnit.MILLISECONDS);
     }
 
     public Object getConfigurationInstance()
@@ -39,19 +49,14 @@ public class DynamicConfigurationInstanceHolder
         return usageCount.decrementAndGet();
     }
 
-    public boolean isInUse()
-    {
-        return usageCount.get() > 0;
-    }
-
-    public long getLastUsedMillis()
-    {
-        return lastUsedMillis;
-    }
-
     public String getRegistrationName()
     {
         return registrationName;
+    }
+
+    private boolean isNotInUse()
+    {
+        return usageCount.get() < 1;
     }
 
     private long now()

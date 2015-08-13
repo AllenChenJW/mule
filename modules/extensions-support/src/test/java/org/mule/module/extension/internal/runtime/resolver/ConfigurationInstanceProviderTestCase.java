@@ -13,10 +13,11 @@ import static org.mule.module.extension.internal.util.ExtensionsTestUtils.getPar
 import org.mule.api.MuleContext;
 import org.mule.api.MuleEvent;
 import org.mule.extension.introspection.Parameter;
+import org.mule.extension.runtime.ExpirationPolicy;
 import org.mule.module.extension.HeisenbergExtension;
 import org.mule.module.extension.internal.manager.ExtensionManagerAdapter;
+import org.mule.module.extension.internal.runtime.config.DefaultConfigurationInstanceProviderFactory;
 import org.mule.module.extension.internal.util.ExtensionsTestUtils;
-import org.mule.module.extension.internal.util.MuleExtensionUtils;
 import org.mule.tck.size.SmallTest;
 
 import java.util.HashMap;
@@ -34,6 +35,7 @@ import org.mockito.stubbing.Answer;
 @RunWith(MockitoJUnitRunner.class)
 public class ConfigurationInstanceProviderTestCase extends AbstractConfigurationInstanceProviderTestCase
 {
+
     private static final Class MODULE_CLASS = HeisenbergExtension.class;
     private static final String MY_NAME = "heisenberg";
     private static final int AGE = 50;
@@ -52,6 +54,9 @@ public class ConfigurationInstanceProviderTestCase extends AbstractConfiguration
 
     @Mock
     private ExtensionManagerAdapter extensionManager;
+
+    @Mock
+    private ExpirationPolicy expirationPolicy;
 
     @Before
     public void before() throws Exception
@@ -78,7 +83,8 @@ public class ConfigurationInstanceProviderTestCase extends AbstractConfiguration
         when(resolverSet.getResolvers()).thenReturn(parameters);
         when(resolverSet.isDynamic()).thenReturn(false);
 
-        instanceProvider = MuleExtensionUtils.createConfigurationInstanceProvider(CONFIG_NAME, extension, configuration, resolverSet, muleContext, extensionManager);
+        instanceProvider = new DefaultConfigurationInstanceProviderFactory()
+                .createConfigurationInstanceProvider(CONFIG_NAME, extension, configuration, resolverSet, muleContext, extensionManager, expirationPolicy);
     }
 
     @Test

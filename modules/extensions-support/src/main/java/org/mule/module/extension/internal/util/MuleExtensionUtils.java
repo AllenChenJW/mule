@@ -12,20 +12,12 @@ import org.mule.DefaultMuleEvent;
 import org.mule.DefaultMuleMessage;
 import org.mule.api.MuleContext;
 import org.mule.api.MuleEvent;
-import org.mule.api.MuleRuntimeException;
 import org.mule.api.construct.FlowConstruct;
 import org.mule.extension.annotations.param.Optional;
-import org.mule.extension.introspection.Configuration;
 import org.mule.extension.introspection.Described;
 import org.mule.extension.introspection.Extension;
-import org.mule.extension.runtime.ConfigurationInstanceProvider;
-import org.mule.extension.runtime.ConfigurationInstanceRegistrationCallback;
 import org.mule.extension.runtime.OperationContext;
 import org.mule.module.extension.internal.runtime.OperationContextAdapter;
-import org.mule.module.extension.internal.runtime.config.ConfigurationObjectBuilder;
-import org.mule.module.extension.internal.runtime.config.DynamicConfigurationInstanceProvider;
-import org.mule.module.extension.internal.runtime.config.StaticConfigurationInstanceProvider;
-import org.mule.module.extension.internal.runtime.resolver.ResolverSet;
 import org.mule.module.extension.internal.runtime.resolver.ValueResolver;
 import org.mule.util.ArrayUtils;
 
@@ -143,47 +135,6 @@ public class MuleExtensionUtils
         Collections.sort(list, new DescribedComparator());
         return list;
     }
-
-    public static <T> ConfigurationInstanceProvider<T> createConfigurationInstanceProvider(
-            String name,
-            Extension extension,
-            Configuration configuration,
-            ResolverSet resolverSet,
-            MuleContext muleContext,
-            ConfigurationInstanceRegistrationCallback registrationCallback) throws Exception
-    {
-        ConfigurationObjectBuilder configurationObjectBuilder = new ConfigurationObjectBuilder(name, extension, configuration, resolverSet);
-
-        if (resolverSet.isDynamic())
-        {
-            return new DynamicConfigurationInstanceProvider<>(name, extension, registrationCallback, configurationObjectBuilder, resolverSet);
-        }
-        else
-        {
-            T configurationInstance = instantiateAndRegisterStaticConfiguration(extension, name, configurationObjectBuilder, registrationCallback, muleContext);
-            return new StaticConfigurationInstanceProvider<>(configurationInstance);
-        }
-    }
-
-    private static <T> T instantiateAndRegisterStaticConfiguration(Extension extension,
-                                                                   String name,
-                                                                   ConfigurationObjectBuilder configurationObjectBuilder,
-                                                                   ConfigurationInstanceRegistrationCallback registrationCallback,
-                                                                   MuleContext muleContext)
-    {
-        try
-        {
-            T configurationInstance = (T) configurationObjectBuilder.build(getInitialiserEvent(muleContext));
-            registrationCallback.registerConfigurationInstance(extension, name, configurationInstance);
-
-            return configurationInstance;
-        }
-        catch (Exception e)
-        {
-            throw new MuleRuntimeException(e);
-        }
-    }
-
 
     public static OperationContextAdapter asOperationContextAdapter(OperationContext operationContext)
     {

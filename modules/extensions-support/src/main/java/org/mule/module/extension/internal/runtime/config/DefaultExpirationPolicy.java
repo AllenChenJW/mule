@@ -6,30 +6,47 @@
  */
 package org.mule.module.extension.internal.runtime.config;
 
-import java.util.concurrent.TimeUnit;
+import org.mule.extension.runtime.ExpirationPolicy;
 
-public class DefaultExpirationPolicy
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
+
+public class DefaultExpirationPolicy implements ExpirationPolicy
 {
     private final long maxIdleTime;
     private final TimeUnit timeUnit;
+    private final Supplier<Long> timeSupplier;
 
-    public DefaultExpirationPolicy(long maxIdleTime, TimeUnit timeUnit)
+    public DefaultExpirationPolicy(long maxIdleTime, TimeUnit timeUnit, Supplier<Long> timeSupplier)
     {
         this.maxIdleTime = maxIdleTime;
         this.timeUnit = timeUnit;
+        this.timeSupplier = timeSupplier;
     }
 
-    public boolean shouldExpirePerIdleTime(long idleTime, TimeUnit idleTimeUnit) {
-        long idleTimeMillis = System.currentTimeMillis() - idleTimeUnit.toMillis(idleTime);
-        return timeUnit.toMillis(maxIdleTime) > idleTimeMillis;
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isExpired(long lastUsed, TimeUnit timeUnit)
+    {
+        long idleTimeMillis = timeSupplier.get() - timeUnit.toMillis(lastUsed);
+        return idleTimeMillis > this.timeUnit.toMillis(maxIdleTime);
     }
 
-
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public long getMaxIdleTime()
     {
         return maxIdleTime;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public TimeUnit getTimeUnit()
     {
         return timeUnit;

@@ -13,6 +13,8 @@ import org.mule.api.MuleRuntimeException;
 import org.mule.extension.introspection.Extension;
 import org.mule.extension.runtime.ConfigurationInstanceProvider;
 import org.mule.extension.runtime.ConfigurationInstanceRegistrationCallback;
+import org.mule.extension.runtime.ExpirableContainer;
+import org.mule.extension.runtime.ExpirationPolicy;
 import org.mule.extension.runtime.OperationContext;
 import org.mule.module.extension.internal.runtime.resolver.ResolverSet;
 import org.mule.module.extension.internal.runtime.resolver.ResolverSetResult;
@@ -21,7 +23,6 @@ import com.google.common.collect.ImmutableMap;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -38,7 +39,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  *
  * @since 3.7.0
  */
-public final class DynamicConfigurationInstanceProvider<T> implements ConfigurationInstanceProvider<T>
+public final class DynamicConfigurationInstanceProvider<T> implements ConfigurationInstanceProvider<T>, ExpirableContainer<Object>
 {
 
     private final String name;
@@ -46,12 +47,12 @@ public final class DynamicConfigurationInstanceProvider<T> implements Configurat
     private final ConfigurationInstanceRegistrationCallback registrationCallback;
     private final ConfigurationObjectBuilder configurationObjectBuilder;
     private final ResolverSet resolverSet;
+    private final ExpirationPolicy expirationPolicy;
 
     private final Map<ResolverSetResult, DynamicConfigurationInstanceHolder> cache = new ConcurrentHashMap<>();
     private final ReadWriteLock cacheLock = new ReentrantReadWriteLock();
     private final Lock cacheReadLock = cacheLock.readLock();
     private final Lock cacheWriteLock = cacheLock.writeLock();
-    private final DefaultExpirationPolicy expirationPolicy;
 
     /**
      * Creates a new instance
@@ -63,13 +64,15 @@ public final class DynamicConfigurationInstanceProvider<T> implements Configurat
                                                 Extension extension,
                                                 ConfigurationInstanceRegistrationCallback registrationCallback,
                                                 ConfigurationObjectBuilder configurationObjectBuilder,
-                                                ResolverSet resolverSet)
+                                                ResolverSet resolverSet,
+                                                ExpirationPolicy expirationPolicy)
     {
         this.name = name;
         this.extension = extension;
         this.registrationCallback = registrationCallback;
         this.configurationObjectBuilder = configurationObjectBuilder;
         this.resolverSet = resolverSet;
+        this.expirationPolicy = expirationPolicy;
     }
 
     /**
@@ -146,7 +149,8 @@ public final class DynamicConfigurationInstanceProvider<T> implements Configurat
         return new DynamicConfigurationInstanceHolder(registrationName, configurationInstance);
     }
 
-    public Map<String, Object> expireIdleConfigurationInstances()
+    @Override
+    public Map<String, Object> getExpired()
     {
         ImmutableMap.Builder<String, Object> expiredConfigs = ImmutableMap.builder();
         cacheWriteLock.lock();
@@ -154,11 +158,7 @@ public final class DynamicConfigurationInstanceProvider<T> implements Configurat
         {
             cache.entrySet()
                     .stream()
-                    .filter(config -> {
-                        DynamicConfigurationInstanceHolder wrapper = config.getValue();
-                        return wrapper.isInUse() &&
-                               expirationPolicy.shouldExpirePerIdleTime(wrapper.getLastUsedMillis(), TimeUnit.MILLISECONDS);
-                    })
+                    .filter(config -> config.getValue().isExpired(expirationPolicy))
                     .forEach(config -> {
                         cache.remove(config.getKey());
                         DynamicConfigurationInstanceHolder wrapper = config.getValue();

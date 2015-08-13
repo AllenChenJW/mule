@@ -11,8 +11,10 @@ import org.mule.api.registry.MuleRegistry;
 import org.mule.extension.ExtensionManager;
 import org.mule.extension.introspection.Extension;
 import org.mule.extension.runtime.ConfigurationInstanceProvider;
+import org.mule.extension.runtime.ExpirableContainer;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 
 import java.util.List;
 import java.util.Map;
@@ -25,7 +27,7 @@ import java.util.stream.Collectors;
  *
  * @since 3.7.0
  */
-final class ExtensionStateTracker
+final class ExtensionStateTracker implements ExpirableContainer<Object>
 {
 
     /**
@@ -102,4 +104,12 @@ final class ExtensionStateTracker
         return wrapper;
     }
 
+    @Override
+    public Map<String, Object> getExpired()
+    {
+        ImmutableMap.Builder<String, Object> expired = ImmutableMap.builder();
+        configurationInstanceProviders.values().stream().map(wrapper -> wrapper.getExpired()).forEach(expired::putAll);
+
+        return expired.build();
+    }
 }

@@ -10,7 +10,6 @@ import static org.mule.module.extension.internal.util.IntrospectionUtils.getFiel
 import org.mule.api.MuleEvent;
 import org.mule.api.MuleException;
 import org.mule.extension.introspection.Configuration;
-import org.mule.extension.introspection.Extension;
 import org.mule.extension.introspection.Parameter;
 import org.mule.module.extension.internal.runtime.BaseObjectBuilder;
 import org.mule.module.extension.internal.runtime.ObjectBuilder;
@@ -39,20 +38,13 @@ import java.util.List;
 public final class ConfigurationObjectBuilder extends BaseObjectBuilder<Object>
 {
 
-    private final String name;
-    private final Extension extension;
     private final Configuration configuration;
     private final ResolverSet resolverSet;
     private final List<ValueSetter> groupValueSetters;
     private final List<ValueSetter> singleValueSetters;
 
-    public ConfigurationObjectBuilder(String name,
-                                      Extension extension,
-                                      Configuration configuration,
-                                      ResolverSet resolverSet)
+    public ConfigurationObjectBuilder(Configuration configuration, ResolverSet resolverSet)
     {
-        this.name = name;
-        this.extension = extension;
         this.configuration = configuration;
         this.resolverSet = resolverSet;
 

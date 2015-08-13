@@ -4,7 +4,7 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.module.extension.internal.runtime;
+package org.mule.module.extension.internal.runtime.executor;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
@@ -69,7 +69,7 @@ public class ConfigurationObjectBuilderTestCase extends AbstractMuleTestCase
         resolverSet.add(nameParameter, getResolver(NAME_VALUE));
         resolverSet.add(descriptionParameter, getResolver(DESCRIPTION_VALUE));
 
-        configurationObjectBuilder = new ConfigurationObjectBuilder(CONFIG_NAME, extension, configuration, resolverSet);
+        configurationObjectBuilder = new ConfigurationObjectBuilder(configuration, resolverSet);
     }
 
     @Test

@@ -7,12 +7,15 @@
 package org.mule.module.extension.internal.config;
 
 import static org.mule.module.extension.internal.config.XmlExtensionParserUtils.getResolverSet;
-import static org.mule.module.extension.internal.util.MuleExtensionUtils.createConfigurationInstanceProvider;
 import org.mule.api.MuleContext;
 import org.mule.extension.introspection.Configuration;
 import org.mule.extension.introspection.Extension;
 import org.mule.extension.runtime.ConfigurationInstanceProvider;
+import org.mule.extension.runtime.ExpirationPolicy;
 import org.mule.module.extension.internal.manager.ExtensionManagerAdapter;
+import org.mule.module.extension.internal.runtime.config.ConfigurationInstanceProviderFactory;
+import org.mule.module.extension.internal.runtime.config.DefaultConfigurationInstanceProviderFactory;
+import org.mule.module.extension.internal.runtime.config.NullExpirationPolicy;
 import org.mule.module.extension.internal.runtime.resolver.ResolverSet;
 
 import org.springframework.beans.factory.FactoryBean;
@@ -28,6 +31,8 @@ final class ConfigurationInstanceProviderFactoryBean implements FactoryBean<Conf
 {
 
     private final ConfigurationInstanceProvider<Object> configurationInstanceProvider;
+    private final ConfigurationInstanceProviderFactory configurationInstanceProviderFactory = new DefaultConfigurationInstanceProviderFactory();
+    private ExpirationPolicy expirationPolicy = null;
 
     ConfigurationInstanceProviderFactoryBean(String name,
                                              Extension extension,
@@ -40,19 +45,19 @@ final class ConfigurationInstanceProviderFactoryBean implements FactoryBean<Conf
         ResolverSet resolverSet = getResolverSet(element, configuration.getParameters());
         try
         {
-            configurationInstanceProvider = createConfigurationInstanceProvider(name,
-                                                                                extension,
-                                                                                configuration,
-                                                                                resolverSet,
-                                                                                muleContext,
-                                                                                extensionManager);
+            configurationInstanceProvider = configurationInstanceProviderFactory.createConfigurationInstanceProvider(
+                    name,
+                    extension,
+                    configuration,
+                    resolverSet,
+                    muleContext,
+                    extensionManager,
+                    getExpirationPolicy());
         }
         catch (Exception e)
         {
             throw new RuntimeException(e);
         }
-
-        extensionManager.registerConfigurationInstanceProvider(extension, name, configurationInstanceProvider);
     }
 
     @Override
@@ -74,5 +79,15 @@ final class ConfigurationInstanceProviderFactoryBean implements FactoryBean<Conf
     public boolean isSingleton()
     {
         return true;
+    }
+
+    private ExpirationPolicy getExpirationPolicy()
+    {
+        return expirationPolicy != null ? expirationPolicy : NullExpirationPolicy.INSTANCE;
+    }
+
+    public void setExpirationPolicy(ExpirationPolicy expirationPolicy)
+    {
+        this.expirationPolicy = expirationPolicy;
     }
 }

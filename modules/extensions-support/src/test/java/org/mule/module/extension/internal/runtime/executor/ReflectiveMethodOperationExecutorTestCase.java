@@ -4,7 +4,7 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.module.extension.internal.runtime;
+package org.mule.module.extension.internal.runtime.executor;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.sameInstance;
@@ -24,9 +24,8 @@ import org.mule.extension.introspection.Parameter;
 import org.mule.module.extension.HeisenbergExtension;
 import org.mule.module.extension.HeisenbergOperations;
 import org.mule.module.extension.internal.manager.ExtensionManagerAdapter;
-import org.mule.module.extension.internal.runtime.executor.ReflectiveMethodOperationExecutor;
-import org.mule.module.extension.internal.runtime.executor.ValueReturnDelegate;
-import org.mule.module.extension.internal.runtime.executor.VoidReturnDelegate;
+import org.mule.module.extension.internal.runtime.DefaultOperationContext;
+import org.mule.module.extension.internal.runtime.OperationContextAdapter;
 import org.mule.module.extension.internal.runtime.resolver.ResolverSetResult;
 import org.mule.module.extension.internal.util.ExtensionsTestUtils;
 import org.mule.tck.junit4.AbstractMuleTestCase;

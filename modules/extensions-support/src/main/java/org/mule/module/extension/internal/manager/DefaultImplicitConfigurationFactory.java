@@ -59,12 +59,7 @@ final class DefaultImplicitConfigurationFactory implements ImplicitConfiguration
             }
 
             final String instanceName = String.format("%s-%s", extension.getName(), implicitConfiguration.getName());
-            ConfigurationObjectBuilder configurationObjectBuilder = new ConfigurationObjectBuilder(
-                    instanceName,
-                    extension,
-                    implicitConfiguration,
-                    buildImplicitConfigurationResolverSet(implicitConfiguration),
-                    registrationCallback);
+            ConfigurationObjectBuilder configurationObjectBuilder = new ConfigurationObjectBuilder(implicitConfiguration, buildImplicitConfigurationResolverSet(implicitConfiguration));
 
             Object configurationInstance;
             try

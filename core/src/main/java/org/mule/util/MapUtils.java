@@ -6,6 +6,8 @@
  */
 package org.mule.util;
 
+import static org.mule.util.Preconditions.checkArgument;
+
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -137,5 +139,16 @@ public class MapUtils extends org.apache.commons.collections.MapUtils
 
         buf.append('}');
         return buf.toString();
+    }
+
+    public static <K, V> void idempotentPut(Map<K, V> map, K key, V value)
+    {
+        checkArgument(value != null, "value cannot be null");
+        if (map.containsKey(key))
+        {
+            throw new IllegalStateException(String.format("A %s is already registered for the name '%s'", value.getClass().getSimpleName(), key));
+        }
+
+        map.put(key, value);
     }
 }

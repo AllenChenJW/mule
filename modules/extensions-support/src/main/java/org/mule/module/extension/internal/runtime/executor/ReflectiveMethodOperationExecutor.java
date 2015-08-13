@@ -4,7 +4,7 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.module.extension.internal.runtime;
+package org.mule.module.extension.internal.runtime.executor;
 
 import static org.apache.commons.lang.ArrayUtils.isEmpty;
 import static org.mule.api.lifecycle.LifecycleUtils.disposeIfNeeded;
@@ -20,6 +20,7 @@ import org.mule.api.lifecycle.InitialisationException;
 import org.mule.api.lifecycle.Lifecycle;
 import org.mule.extension.runtime.OperationContext;
 import org.mule.extension.runtime.OperationExecutor;
+import org.mule.module.extension.internal.runtime.AbstractOperationExecutor;
 
 import java.lang.reflect.Method;
 

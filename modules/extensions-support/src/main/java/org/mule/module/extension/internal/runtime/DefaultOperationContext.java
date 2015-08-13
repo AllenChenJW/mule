@@ -30,7 +30,7 @@ import java.util.function.Consumer;
  *
  * @since 3.7.0
  */
-public final class DefaultOperationContext implements OperationContextAdapter
+public class DefaultOperationContext implements OperationContextAdapter
 {
 
     private final String configurationInstanceProviderName;

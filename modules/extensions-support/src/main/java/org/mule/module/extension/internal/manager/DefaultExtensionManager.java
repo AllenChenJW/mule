@@ -20,7 +20,7 @@ import org.mule.extension.runtime.ConfigurationInstanceProvider;
 import org.mule.extension.runtime.OperationContext;
 import org.mule.module.extension.internal.introspection.DefaultExtensionFactory;
 import org.mule.module.extension.internal.introspection.ExtensionDiscoverer;
-import org.mule.module.extension.internal.runtime.StaticConfigurationInstanceProvider;
+import org.mule.module.extension.internal.runtime.config.StaticConfigurationInstanceProvider;
 import org.mule.registry.SpiServiceRegistry;
 import org.mule.util.ObjectNameHelper;
 
@@ -176,14 +176,16 @@ public final class DefaultExtensionManager implements ExtensionManagerAdapter, M
      * {@inheritDoc}
      */
     @Override
-    public <C> void registerConfigurationInstance(Extension extension, String configurationInstanceName, C configurationInstance)
+    public <C> String registerConfigurationInstance(Extension extension, String configurationInstanceProviderName, C configurationInstance)
     {
         ExtensionStateTracker extensionStateTracker = extensionRegistry.getExtensionState(extension);
-        configurationInstanceName = objectNameHelper.getUniqueName(configurationInstanceName);
+        final String registrationName = objectNameHelper.getUniqueName(configurationInstanceProviderName);
 
-        extensionStateTracker.registerConfigurationInstance(configurationInstanceName, configurationInstance);
+        extensionStateTracker.registerConfigurationInstance(configurationInstanceProviderName, registrationName, configurationInstance);
 
-        putInRegistryAndApplyLifecycle(configurationInstanceName, configurationInstance);
+        putInRegistryAndApplyLifecycle(registrationName, configurationInstance);
+
+        return registrationName;
     }
 
     private void putInRegistryAndApplyLifecycle(String key, Object object)

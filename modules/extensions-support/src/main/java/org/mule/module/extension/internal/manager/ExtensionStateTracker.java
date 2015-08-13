@@ -6,7 +6,7 @@
  */
 package org.mule.module.extension.internal.manager;
 
-import static org.mule.util.Preconditions.checkArgument;
+import static org.mule.util.MapUtils.idempotentPut;
 import org.mule.api.registry.MuleRegistry;
 import org.mule.extension.ExtensionManager;
 import org.mule.extension.introspection.Extension;
@@ -17,6 +17,7 @@ import com.google.common.collect.ImmutableList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * Holds state regarding the use that the platform is doing of a
@@ -32,16 +33,10 @@ final class ExtensionStateTracker
      * through the {@link ExtensionManager#registerConfigurationInstanceProvider(Extension, String, ConfigurationInstanceProvider)}
      * method.
      */
-    private final Map<String, ConfigurationInstanceProvider<?>> configurationInstanceProviders = new ConcurrentHashMap<>();
+    private final Map<String, ConfigurationInstanceProviderWrapper> configurationInstanceProviders = new ConcurrentHashMap<>();
 
     /**
-     * Correlates a configuration instance to the key on which it was registered on the
-     * {@link MuleRegistry}
-     */
-    private final Map<String, Object> configurationInstances = new ConcurrentHashMap<>();
-
-    /**
-     * Registers the {@code configurationInstanceProvider} than shoudl be used when a configuration instance
+     * Registers the {@code configurationInstanceProvider} than should be used when a configuration instance
      * for the given {@code key} is requested
      *
      * @param key                           the name under which the {@code configurationInstanceProvider} will be registered
@@ -50,7 +45,7 @@ final class ExtensionStateTracker
      */
     <C> void registerConfigurationInstanceProvider(String key, ConfigurationInstanceProvider<C> configurationInstanceProvider)
     {
-        idempotentPut(configurationInstanceProviders, key, configurationInstanceProvider);
+        idempotentPut(configurationInstanceProviders, key, new ConfigurationInstanceProviderWrapper(configurationInstanceProvider));
     }
 
     /**
@@ -63,7 +58,7 @@ final class ExtensionStateTracker
      */
     <C> ConfigurationInstanceProvider<C> getConfigurationInstanceProvider(String configurationInstanceProviderName)
     {
-        return (ConfigurationInstanceProvider<C>) configurationInstanceProviders.get(configurationInstanceProviderName);
+        return (ConfigurationInstanceProvider<C>) getWrapper(configurationInstanceProviderName).getConfigurationInstanceProvider();
     }
 
     /**
@@ -74,29 +69,37 @@ final class ExtensionStateTracker
      */
     List<ConfigurationInstanceProvider<?>> getConfigurationInstanceProviders()
     {
-        return ImmutableList.copyOf(configurationInstanceProviders.values());
+        return ImmutableList.copyOf(
+                configurationInstanceProviders.values()
+                        .stream()
+                        .map(wrapper -> wrapper.getConfigurationInstanceProvider())
+                        .collect(Collectors.toList()));
     }
 
     /**
      * Registers the creation of a new configuration instance
      *
-     * @param instanceKey           the key under which the instance was registered in the {@link MuleRegistry}
+     * @param providerName          the name of a registered {@link ConfigurationInstanceProvider}
+     * @param registrationName      the name on which the {@code configurationInstance} has been registered on the {@link MuleRegistry}
      * @param configurationInstance the configuration instance. Cannot be {@code null}
      * @param <C>                   the generic type for the {@code configurationInstance}
      */
-    <C> void registerConfigurationInstance(String instanceKey, C configurationInstance)
+    <C> void registerConfigurationInstance(String providerName, String registrationName, C configurationInstance)
     {
-        idempotentPut(configurationInstances, instanceKey, configurationInstance);
+        ConfigurationInstanceProviderWrapper wrapper = getWrapper(providerName);
+        wrapper.addConfigurationInstance(registrationName, configurationInstance);
     }
 
-    private <K, V> void idempotentPut(Map<K, V> map, K key, V value)
+    private ConfigurationInstanceProviderWrapper getWrapper(String configurationInstanceProviderName)
     {
-        checkArgument(value != null, "value cannot be null");
-        if (map.containsKey(key))
+        ConfigurationInstanceProviderWrapper wrapper = configurationInstanceProviders.get(configurationInstanceProviderName);
+        if (wrapper == null)
         {
-            throw new IllegalStateException(String.format("A %s is already registered for the name '%s'", value.getClass().getSimpleName(), key));
+            throw new IllegalArgumentException(String.format("No %s was registered with name %s",
+                                                             ConfigurationInstanceProvider.class.getName(),
+                                                             configurationInstanceProviderName));
         }
-
-        map.put(key, value);
+        return wrapper;
     }
+
 }

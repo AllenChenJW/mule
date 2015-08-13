@@ -7,16 +7,12 @@
 package org.mule.module.extension.internal.config;
 
 import static org.mule.module.extension.internal.config.XmlExtensionParserUtils.getResolverSet;
-import static org.mule.module.extension.internal.util.MuleExtensionUtils.getInitialiserEvent;
+import static org.mule.module.extension.internal.util.MuleExtensionUtils.createConfigurationInstanceProvider;
 import org.mule.api.MuleContext;
-import org.mule.api.MuleRuntimeException;
 import org.mule.extension.introspection.Configuration;
 import org.mule.extension.introspection.Extension;
 import org.mule.extension.runtime.ConfigurationInstanceProvider;
 import org.mule.module.extension.internal.manager.ExtensionManagerAdapter;
-import org.mule.module.extension.internal.runtime.ConfigurationObjectBuilder;
-import org.mule.module.extension.internal.runtime.DynamicConfigurationInstanceProvider;
-import org.mule.module.extension.internal.runtime.StaticConfigurationInstanceProvider;
 import org.mule.module.extension.internal.runtime.resolver.ResolverSet;
 
 import org.springframework.beans.factory.FactoryBean;
@@ -42,31 +38,21 @@ final class ConfigurationInstanceProviderFactoryBean implements FactoryBean<Conf
         final ExtensionManagerAdapter extensionManager = (ExtensionManagerAdapter) muleContext.getExtensionManager();
 
         ResolverSet resolverSet = getResolverSet(element, configuration.getParameters());
-        ConfigurationObjectBuilder configurationObjectBuilder = new ConfigurationObjectBuilder(name, extension, configuration, resolverSet, extensionManager);
-
-        if (resolverSet.isDynamic())
-        {
-            configurationInstanceProvider = new DynamicConfigurationInstanceProvider<>(configurationObjectBuilder, resolverSet);
-        }
-        else
-        {
-            Object configurationInstance = instantiateStaticConfiguration(muleContext, configurationObjectBuilder);
-            configurationInstanceProvider = new StaticConfigurationInstanceProvider<>(configurationInstance);
-        }
-
-        extensionManager.registerConfigurationInstanceProvider(extension, name, configurationInstanceProvider);
-    }
-
-    private Object instantiateStaticConfiguration(MuleContext muleContext, ConfigurationObjectBuilder configurationObjectBuilder)
-    {
         try
         {
-            return configurationObjectBuilder.build(getInitialiserEvent(muleContext));
+            configurationInstanceProvider = createConfigurationInstanceProvider(name,
+                                                                                extension,
+                                                                                configuration,
+                                                                                resolverSet,
+                                                                                muleContext,
+                                                                                extensionManager);
         }
         catch (Exception e)
         {
-            throw new MuleRuntimeException(e);
+            throw new RuntimeException(e);
         }
+
+        extensionManager.registerConfigurationInstanceProvider(extension, name, configurationInstanceProvider);
     }
 
     @Override

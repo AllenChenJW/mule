@@ -20,8 +20,8 @@ import org.mule.api.MuleContext;
 import org.mule.api.MuleEvent;
 import org.mule.extension.ExtensionManager;
 import org.mule.module.extension.HeisenbergExtension;
-import org.mule.module.extension.internal.runtime.ConfigurationObjectBuilder;
-import org.mule.module.extension.internal.runtime.DynamicConfigurationInstanceProvider;
+import org.mule.module.extension.internal.runtime.config.ConfigurationObjectBuilder;
+import org.mule.module.extension.internal.runtime.config.DynamicConfigurationInstanceProvider;
 import org.mule.module.extension.internal.util.ExtensionsTestUtils;
 import org.mule.tck.size.SmallTest;
 

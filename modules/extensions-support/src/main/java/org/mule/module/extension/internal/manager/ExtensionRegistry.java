@@ -104,9 +104,7 @@ final class ExtensionRegistry
         if (CollectionUtils.isEmpty(cachedCapables))
         {
             ImmutableSet.Builder<Extension> capables = ImmutableSet.builder();
-
             getExtensions().stream().filter(extension -> extension.isCapableOf(capabilityType)).forEach(capables::add);
-
             cachedCapables = capables.build();
             capabilityToExtension.put(capabilityType, cachedCapables);
         }

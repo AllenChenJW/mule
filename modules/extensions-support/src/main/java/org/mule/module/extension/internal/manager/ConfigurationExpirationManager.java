@@ -4,16 +4,12 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.module.extension.internal.runtime;
+package org.mule.module.extension.internal.manager;
 
-import java.util.function.Supplier;
+import org.mule.api.lifecycle.Startable;
+import org.mule.api.lifecycle.Stoppable;
 
-public class TimeSupplier implements Supplier<Long>
+public interface ConfigurationExpirationManager extends Startable, Stoppable
 {
 
-    @Override
-    public Long get()
-    {
-        return System.currentTimeMillis();
-    }
 }

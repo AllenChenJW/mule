@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<xsd:schema xmlns="http://www.mulesoft.org/schema/mule/extension"
+            xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns:mule="http://www.mulesoft.org/schema/mule/core"
+            targetNamespace="http://www.mulesoft.org/schema/mule/extension"
+            elementFormDefault="qualified"
+            attributeFormDefault="unqualified">
+
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace"/>
+    <xsd:import namespace="http://www.mulesoft.org/schema/mule/core"
+                schemaLocation="http://www.mulesoft.org/schema/mule/core/3.7/mule.xsd"/>
+
+    <xsd:annotation>
+        <xsd:documentation>
+            Configuration elements common to all Mule Extensions
+        </xsd:documentation>
+    </xsd:annotation>
+
+    <xsd:element name="extensions-config" type="extensionsConfigType"
+                 substitutionGroup="mule:abstract-configuration-extension">
+        <xsd:annotation>
+            <xsd:documentation>
+                Application level configuration about how to handle Mule Extensions
+            </xsd:documentation>
+        </xsd:annotation>
+    </xsd:element>
+
+    <xsd:complexType name="extensionsConfigType">
+        <xsd:complexContent>
+            <xsd:extension base="mule:abstractConfigurationExtensionType">
+                <xsd:sequence>
+                    <xsd:choice>
+                        <xsd:element name="dynamic-configuration-expiration" type="dynamicConfigurationExpirationType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>
+                                    Configuration about how often to check for expirable dynamic configuration instances and actually do
+                                    dispose them
+                                </xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:choice>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+
+    <xsd:complexType name="dynamicConfigurationExpirationType">
+        <xsd:attribute name="frequency" type="mule:substitutableLong" use="required">
+            <xsd:annotation>
+                <xsd:documentation>
+                    A scalar time value for how often should the platform check for expirable dynamic configs
+                </xsd:documentation>
+            </xsd:annotation>
+        </xsd:attribute>
+        <xsd:attribute name="timeUnit" type="mule:timeUnitType" use="required">
+            <xsd:annotation>
+                <xsd:documentation>
+                    A time unit that qualifies the frequency attribute
+                </xsd:documentation>
+            </xsd:annotation>
+        </xsd:attribute>
+    </xsd:complexType>
+</xsd:schema>

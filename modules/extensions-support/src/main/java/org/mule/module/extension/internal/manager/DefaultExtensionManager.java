@@ -6,6 +6,7 @@
  */
 package org.mule.module.extension.internal.manager;
 
+import static org.mule.module.extension.internal.manager.DefaultConfigurationExpirationManager.Builder.newBuilder;
 import static org.mule.util.Preconditions.checkArgument;
 import org.mule.api.MuleContext;
 import org.mule.api.MuleException;
@@ -13,21 +14,28 @@ import org.mule.api.MuleRuntimeException;
 import org.mule.api.context.MuleContextAware;
 import org.mule.api.lifecycle.Initialisable;
 import org.mule.api.lifecycle.InitialisationException;
+import org.mule.api.lifecycle.Startable;
+import org.mule.api.lifecycle.Stoppable;
+import org.mule.api.registry.RegistrationException;
 import org.mule.api.registry.ServiceRegistry;
 import org.mule.common.MuleVersion;
 import org.mule.extension.introspection.Extension;
 import org.mule.extension.runtime.ConfigurationInstanceProvider;
 import org.mule.extension.runtime.OperationContext;
+import org.mule.module.extension.internal.config.ExtensionConfig;
 import org.mule.module.extension.internal.introspection.DefaultExtensionFactory;
 import org.mule.module.extension.internal.introspection.ExtensionDiscoverer;
 import org.mule.module.extension.internal.runtime.config.StaticConfigurationInstanceProvider;
 import org.mule.registry.SpiServiceRegistry;
+import org.mule.time.ImmutableTime;
+import org.mule.time.Time;
 import org.mule.util.ObjectNameHelper;
 
 import com.google.common.collect.ImmutableList;
 
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +46,7 @@ import org.slf4j.LoggerFactory;
  *
  * @since 3.7.0
  */
-public final class DefaultExtensionManager implements ExtensionManagerAdapter, MuleContextAware, Initialisable
+public final class DefaultExtensionManager implements ExtensionManagerAdapter, MuleContextAware, Initialisable, Startable, Stoppable
 {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultExtensionManager.class);
@@ -50,12 +58,26 @@ public final class DefaultExtensionManager implements ExtensionManagerAdapter, M
     private ObjectNameHelper objectNameHelper;
     private ExtensionDiscoverer extensionDiscoverer = new DefaultExtensionDiscoverer(new DefaultExtensionFactory(serviceRegistry), serviceRegistry);
     private ImplicitConfigurationFactory implicitConfigurationFactory;
+    private ConfigurationExpirationManager configurationExpirationManager;
 
     @Override
     public void initialise() throws InitialisationException
     {
         objectNameHelper = new ObjectNameHelper(muleContext);
         implicitConfigurationFactory = new DefaultImplicitConfigurationFactory(extensionRegistry, muleContext);
+    }
+
+    @Override
+    public void start() throws MuleException
+    {
+        configurationExpirationManager = newConfigurationExpirationManager();
+        configurationExpirationManager.start();
+    }
+
+    @Override
+    public void stop() throws MuleException
+    {
+        configurationExpirationManager.stop();
     }
 
     /**
@@ -69,11 +91,7 @@ public final class DefaultExtensionManager implements ExtensionManagerAdapter, M
         List<Extension> discovered = extensionDiscoverer.discover(classLoader);
         LOGGER.info("Discovered {} extensions", discovered.size());
 
-        for (Extension extension : discovered)
-        {
-            registerExtension(extension);
-        }
-
+        discovered.forEach(this::registerExtension);
         return ImmutableList.copyOf(extensionRegistry.getExtensions());
     }
 
@@ -263,6 +281,41 @@ public final class DefaultExtensionManager implements ExtensionManagerAdapter, M
                     extension.getName(),
                     actual.getVersion(),
                     extension.getVersion()));
+        }
+    }
+
+    private ConfigurationExpirationManager newConfigurationExpirationManager()
+    {
+        Time freq = getConfigurationExpirationFrequency();
+        return newBuilder(extensionRegistry, muleContext)
+                .runEvery(freq.getTime(), freq.getUnit())
+                .onExpired((key, object) -> unregisterConfigurationInstance(key, object))
+                .build();
+    }
+
+    private void unregisterConfigurationInstance(String key, Object object)
+    {
+        try
+        {
+            muleContext.getRegistry().unregisterObject(key);
+        }
+        catch (RegistrationException e)
+        {
+            LOGGER.error(String.format("Could not unregister expired dynamic config of key '%s' and type %s",
+                                       key, object.getClass().getName()), e);
+        }
+    }
+
+    private Time getConfigurationExpirationFrequency()
+    {
+        ExtensionConfig extensionConfig = muleContext.getConfiguration().getExtension(ExtensionConfig.class);
+        if (extensionConfig != null)
+        {
+            return extensionConfig.getDynamicConfigExpirationFrequency();
+        }
+        else
+        {
+            return new ImmutableTime(5L, TimeUnit.MINUTES);
         }
     }
 

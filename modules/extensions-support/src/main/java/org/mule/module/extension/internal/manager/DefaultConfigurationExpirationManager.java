@@ -12,8 +12,6 @@ import static org.mule.util.concurrent.ThreadNameHelper.getPrefix;
 import org.mule.api.MuleContext;
 import org.mule.api.MuleException;
 import org.mule.api.MuleRuntimeException;
-import org.mule.api.lifecycle.Startable;
-import org.mule.api.lifecycle.Stoppable;
 
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -24,7 +22,7 @@ import java.util.function.BiConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DefaultConfigurationExpirationManager implements Startable, Stoppable
+public class DefaultConfigurationExpirationManager implements ConfigurationExpirationManager
 {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultConfigurationExpirationManager.class);
@@ -61,7 +59,7 @@ public class DefaultConfigurationExpirationManager implements Startable, Stoppab
             return this;
         }
 
-        public DefaultConfigurationExpirationManager build()
+        public ConfigurationExpirationManager build()
         {
             checkArgument(manager.extensionRegistry != null, "extensionRegistry cannot be null");
             checkArgument(manager.muleContext != null, "muleContext cannot be null");
@@ -94,20 +92,20 @@ public class DefaultConfigurationExpirationManager implements Startable, Stoppab
 
     private void expire()
     {
+        if (muleContext.isStopping() || muleContext.isStopped())
+        {
+            return;
+        }
+
         LOGGER.debug("Running configuration expiration cycle");
         try
         {
             Map<String, Object> expired = extensionRegistry.getExpiredConfigInstances();
             if (LOGGER.isDebugEnabled())
             {
-                if (expired.isEmpty())
-                {
-                    LOGGER.debug("No configurations elegible for expiration were found");
-                }
-                else
-                {
-                    LOGGER.debug("Found {} expirable configurations", expired.size());
-                }
+                LOGGER.debug(expired.isEmpty()
+                             ? "No configurations elegible for expiration were found"
+                             : "Found {} expirable configurations", expired.size());
             }
 
             expired.entrySet().stream().forEach(this::handleExpiration);
